@@ -61,7 +61,7 @@ export default {
     // ---- side lists ----
     showEventList: { label: { en: "Show events list" }, type: "OnOff", defaultValue: true, bindable: true },
     eventListTitle: { label: { en: "Events list title" }, type: "Text", defaultValue: "Events", bindable: true },
-    hidePastEvents: { label: { en: "Events list: only yesterday & after" }, type: "OnOff", defaultValue: true, bindable: true },
+    hidePastEvents: { label: { en: "Events list: only today & after" }, type: "OnOff", defaultValue: true, bindable: true },
     showUnscheduled: { label: { en: "Show 'Needs Scheduling' list" }, type: "OnOff", defaultValue: true, bindable: true },
     unscheduledTitle: { label: { en: "Needs-scheduling title" }, type: "Text", defaultValue: "Needs Scheduling", bindable: true },
     scheduleLabel: { label: { en: "Schedule button label" }, type: "Text", defaultValue: "Schedule", bindable: true },

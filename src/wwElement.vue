@@ -258,10 +258,10 @@ export default {
     rangeEvents() {
       const { start, end } = this.rangeBounds;
       let lo = start;
-      // Events list floor: only yesterday and after (hide older items).
+      // Events list floor: only today and after (hide past items).
       if (this.content.hidePastEvents !== false) {
-        const y = this.addDays(this.startOfDay(new Date()), -1);
-        if (y > lo) lo = y;
+        const t = this.startOfDay(new Date());
+        if (t > lo) lo = t;
       }
       return this.scheduledEvents.filter((e) => e.date >= lo && e.date <= end).sort((a, b) => a.date - b.date);
     },
