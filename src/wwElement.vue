@@ -37,7 +37,7 @@
                 <div class="pp-daycell__events">
                   <button
                     v-for="ev in cell.events.slice(0, maxPerDay)" :key="ev._k" type="button"
-                    class="pp-chip" :style="chipStyle(ev)" :title="ev.title"
+                    class="pp-chip" :style="chipStyle(ev)" :title="ev.pm ? ev.title + ' — ' + ev.pm : ev.title"
                     :draggable="dragEnabled" @dragstart="onEventDragStart($event, ev)" @dragend="onDragEnd"
                     @click.stop="clickEvent(ev)"
                   >
@@ -94,6 +94,7 @@
                   >
                     <span class="pp-tgevent__time">{{ ev.spanText }}</span>
                     <span class="pp-tgevent__title">{{ ev.title }}</span>
+                    <span v-if="content.showPmName !== false && ev.pm" class="pp-tgevent__pm"><svg class="pp-svg" v-bind="svgAttrs"><path :d="ic('user')"></path></svg>{{ ev.pm }}</span>
                   </div>
                 </div>
               </div>
@@ -115,6 +116,7 @@
                   <span class="pp-listitem__main">
                     <span class="pp-listitem__title">{{ ev.title }}</span>
                     <span class="pp-listitem__meta">{{ ev.dateText }}<template v-if="ev.timeText"> · {{ ev.timeText }}</template></span>
+                    <span v-if="content.showPmName !== false && ev.pm" class="pp-listitem__pm"><svg class="pp-svg" v-bind="svgAttrs"><path :d="ic('user')"></path></svg>{{ ev.pm }}</span>
                   </span>
                   <span v-if="ev.tag" class="pp-tag" :style="tagStyle(ev)">{{ ev.tag }}</span>
                 </button>
@@ -165,6 +167,7 @@ const ICONS = {
   alert: "M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01",
   "calendar-plus": "M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM12 14v4M10 16h4",
   grip: "M9 6h.01M9 12h.01M9 18h.01M15 6h.01M15 12h.01M15 18h.01",
+  user: "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
 };
 
 const PALETTE = ["#6366f1", "#10b981", "#f59e0b", "#3b82f6", "#ec4899", "#8b5cf6", "#14b8a6", "#ef4444"];
@@ -213,6 +216,7 @@ export default {
       const gk = this.content.tagKey || "tag";
       const ck = this.content.colorKey || "color";
       const sk = this.content.scheduledKey || "scheduled";
+      const pmk = this.content.pmKey || "pm_name";
       const idk = this.content.idKey || "id";
       const dur = this.defaultDurMin;
       return raw.map((o, i) => {
@@ -233,6 +237,7 @@ export default {
           id: idVal,
           title: String(this.unwrap(obj[tk]) || "Untitled"),
           date, end, tag: String(this.unwrap(obj[gk]) || ""),
+          pm: this.namesOf(obj[pmk]),
           color: this.unwrap(obj[ck]) || "",
           scheduled, hasTime, startMin, endMin,
           timeText: hasTime ? this.timeStr(date) : "",
@@ -304,6 +309,11 @@ export default {
     ic(name) { return ICONS[name] || ""; },
     cap(s) { return String(s).charAt(0).toUpperCase() + String(s).slice(1); },
     unwrap(v) { if (Array.isArray(v)) { const l = v.filter((x) => x != null && x !== ""); return l.length ? l[0] : ""; } return v == null ? "" : v; },
+    // PM/assignee may arrive as an array of names or a single value — join them.
+    namesOf(v) {
+      if (Array.isArray(v)) return v.filter((x) => x != null && x !== "").map((x) => String(x).trim()).join(", ");
+      return v == null ? "" : String(v).trim();
+    },
     parseDate(v) { if (!v) return null; if (v instanceof Date) return isNaN(v.getTime()) ? null : v; const d = new Date(v); return isNaN(d.getTime()) ? null : d; },
     startOfDay(d) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; },
     endOfDay(d) { const x = new Date(d); x.setHours(23, 59, 59, 999); return x; },
@@ -390,7 +400,7 @@ export default {
       const nd = new Date(date); nd.setHours(Math.floor(mins / 60), mins % 60, 0, 0);
       this.$emit("trigger-event", { name: "dateClick", event: { date: this.toISO(nd) } });
     },
-    clickEvent(ev) { this.$emit("trigger-event", { name: "eventClick", event: { id: ev.id, title: ev.title, date: this.toISO(ev.date), tag: ev.tag, event: ev.raw } }); },
+    clickEvent(ev) { this.$emit("trigger-event", { name: "eventClick", event: { id: ev.id, title: ev.title, date: this.toISO(ev.date), tag: ev.tag, pm: ev.pm, event: ev.raw } }); },
     clickSchedule(ev) { this.$emit("trigger-event", { name: "scheduleClick", event: { id: ev.id, title: ev.title, tag: ev.tag, event: ev.raw } }); },
     // ---- drag & drop ----
     onEventDragStart(e, ev) {
@@ -537,6 +547,8 @@ export default {
 .pp-tgevent:active { cursor: grabbing; }
 .pp-tgevent__time { font-size: 10px; font-weight: 600; opacity: .92; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pp-tgevent__title { font-size: 11.5px; font-weight: 700; line-height: 1.25; overflow: hidden; }
+.pp-tgevent__pm { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; font-weight: 600; opacity: .9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+.pp-tgevent__pm .pp-svg { width: 10px; height: 10px; flex: none; }
 
 /* week grid set cols var */
 .pp-tg { --cols: 7; }
@@ -562,6 +574,8 @@ export default {
 .pp-listitem__main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .pp-listitem__title { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pp-listitem__meta { font-size: 11.5px; color: var(--text-muted); }
+.pp-listitem__pm { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 600; color: var(--text-subtle); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pp-listitem__pm .pp-svg { width: 12px; height: 12px; flex: none; }
 .pp-tag { flex: none; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; background: var(--surface-3); color: var(--text-muted); white-space: nowrap; }
 
 /* needs-scheduling action item (stacked so the button never covers the title) */

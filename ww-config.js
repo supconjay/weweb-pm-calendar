@@ -19,11 +19,11 @@ export default {
     events: {
       label: { en: "Events / trackers (bind)" }, type: "Array", bindable: true,
       defaultValue: [
-        { id: "e1", title: "Project#2690 QC Visit", date: "2026-07-08T09:00:00", tag: "QC", scheduled: true },
-        { id: "e2", title: "Project#3080 Install", date: "2026-07-08T13:30:00", tag: "Install", scheduled: true },
-        { id: "e3", title: "Project#3079 Walkthrough", date: "2026-07-06T10:00:00", tag: "Walkthrough", scheduled: true },
-        { id: "e4", title: "Project#2955 Repipe", date: "2026-07-15", tag: "Repipe", scheduled: true },
-        { id: "e5", title: "Project#3099 Follow-up", date: "2026-07-22", tag: "Follow-up", scheduled: true },
+        { id: "e1", title: "Project#2690 QC Visit", date: "2026-07-08T09:00:00", tag: "QC", pm_name: "Joey Robinson", scheduled: true },
+        { id: "e2", title: "Project#3080 Install", date: "2026-07-08T13:30:00", tag: "Install", pm_name: "James Sanzone", scheduled: true },
+        { id: "e3", title: "Project#3079 Walkthrough", date: "2026-07-06T10:00:00", tag: "Walkthrough", pm_name: "AJ Burns", scheduled: true },
+        { id: "e4", title: "Project#2955 Repipe", date: "2026-07-15", tag: "Repipe", pm_name: "James Sanzone", scheduled: true },
+        { id: "e5", title: "Project#3099 Follow-up", date: "2026-07-22", tag: "Follow-up", pm_name: "Grady Pearson Jr.", scheduled: true },
         { id: "u1", title: "Project#2135 - 2767 New South Drive", date: "", tag: "Sold Unscheduled", scheduled: false },
         { id: "u2", title: "Project#3083 - 363 Brook Lea Cove", date: "", tag: "Sold Unscheduled", scheduled: false },
         { id: "u3", title: "Project#2118 - 134 Stoneybrooks Place", date: "", tag: "Needs QC", scheduled: false },
@@ -34,6 +34,7 @@ export default {
     dateKey: { label: { en: "Field: date/start" }, type: "Text", defaultValue: "date", bindable: true, section: "settings" },
     endKey: { label: { en: "Field: end (optional)" }, type: "Text", defaultValue: "end", bindable: true, section: "settings" },
     tagKey: { label: { en: "Field: tag/label" }, type: "Text", defaultValue: "tag", bindable: true, section: "settings" },
+    pmKey: { label: { en: "Field: PM / assignee" }, type: "Text", defaultValue: "pm_name", bindable: true, section: "settings" },
     colorKey: { label: { en: "Field: color (hex, optional)" }, type: "Text", defaultValue: "color", bindable: true, section: "settings" },
     scheduledKey: { label: { en: "Field: scheduled (bool, optional)" }, type: "Text", defaultValue: "scheduled", bindable: true, section: "settings" },
 
@@ -47,6 +48,7 @@ export default {
       ] }, defaultValue: "month", bindable: true,
     },
     showViewSwitch: { label: { en: "Show view switcher" }, type: "OnOff", defaultValue: true, bindable: true },
+    showPmName: { label: { en: "Show PM name on events" }, type: "OnOff", defaultValue: true, bindable: true },
     weekStartsMonday: { label: { en: "Week starts Monday" }, type: "OnOff", defaultValue: false, bindable: true },
     maxPerDay: { label: { en: "Max events per day cell (month)" }, type: "Number", options: { min: 1, max: 10, step: 1 }, defaultValue: 3, bindable: true },
     // ---- week/day time grid ----
