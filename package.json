@@ -1,0 +1,11 @@
+{
+  "name": "pp-pm-calendar",
+  "version": "0.0.1",
+  "scripts": {
+    "build": "weweb build --name=pp-pm-calendar --type=wwobject",
+    "serve": "weweb serve --type=wwobject"
+  },
+  "devDependencies": {
+    "@weweb/cli": "latest"
+  }
+}
