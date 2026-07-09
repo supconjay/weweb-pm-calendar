@@ -19,9 +19,9 @@ export default {
     events: {
       label: { en: "Events / trackers (bind)" }, type: "Array", bindable: true,
       defaultValue: [
-        { id: "e1", title: "Project#2690 QC Visit", date: "2026-07-08T09:00:00", tag: "QC", pm_name: "Joey Robinson", scheduled: true },
-        { id: "e2", title: "Project#3080 Install", date: "2026-07-08T13:30:00", tag: "Install", pm_name: "James Sanzone", scheduled: true },
-        { id: "e3", title: "Project#3079 Walkthrough", date: "2026-07-06T10:00:00", tag: "Walkthrough", pm_name: "AJ Burns", scheduled: true },
+        { id: "e1", title: "Project#2690 QC Visit", date: "2026-07-08T09:00:00Z", tag: "QC", pm_name: "Joey Robinson", scheduled: true },
+        { id: "e2", title: "Project#3080 Install", date: "2026-07-08T13:30:00Z", tag: "Install", pm_name: "James Sanzone", scheduled: true },
+        { id: "e3", title: "Project#3079 Walkthrough", date: "2026-07-06T10:00:00Z", tag: "Walkthrough", pm_name: "AJ Burns", scheduled: true },
         { id: "e4", title: "Project#2955 Repipe", date: "2026-07-15", tag: "Repipe", pm_name: "James Sanzone", scheduled: true },
         { id: "e5", title: "Project#3099 Follow-up", date: "2026-07-22", tag: "Follow-up", pm_name: "Grady Pearson Jr.", scheduled: true },
         { id: "u1", title: "Project#2135 - 2767 New South Drive", date: "", tag: "Sold Unscheduled", scheduled: false },
@@ -50,6 +50,7 @@ export default {
     showViewSwitch: { label: { en: "Show view switcher" }, type: "OnOff", defaultValue: true, bindable: true },
     showPmName: { label: { en: "Show PM name on events" }, type: "OnOff", defaultValue: true, bindable: true },
     weekStartsMonday: { label: { en: "Week starts Monday" }, type: "OnOff", defaultValue: false, bindable: true },
+    utc: { label: { en: "Interpret & display times as UTC" }, type: "OnOff", defaultValue: true, bindable: true },
     maxPerDay: { label: { en: "Max events per day cell (month)" }, type: "Number", options: { min: 1, max: 10, step: 1 }, defaultValue: 3, bindable: true },
     // ---- week/day time grid ----
     dayStartHour: { label: { en: "Day start hour (0-23)" }, type: "Number", options: { min: 0, max: 23, step: 1 }, defaultValue: 7, bindable: true },
@@ -60,6 +61,7 @@ export default {
     // ---- side lists ----
     showEventList: { label: { en: "Show events list" }, type: "OnOff", defaultValue: true, bindable: true },
     eventListTitle: { label: { en: "Events list title" }, type: "Text", defaultValue: "Events", bindable: true },
+    hidePastEvents: { label: { en: "Events list: only yesterday & after" }, type: "OnOff", defaultValue: true, bindable: true },
     showUnscheduled: { label: { en: "Show 'Needs Scheduling' list" }, type: "OnOff", defaultValue: true, bindable: true },
     unscheduledTitle: { label: { en: "Needs-scheduling title" }, type: "Text", defaultValue: "Needs Scheduling", bindable: true },
     scheduleLabel: { label: { en: "Schedule button label" }, type: "Text", defaultValue: "Schedule", bindable: true },

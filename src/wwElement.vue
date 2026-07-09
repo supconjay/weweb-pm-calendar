@@ -204,6 +204,7 @@ export default {
     gridHeight() { return (this.dayEndHour - this.dayStartHour) * HOUR_H; },
     hourMarks() { const out = []; for (let h = this.dayStartHour; h <= this.dayEndHour; h++) out.push(h); return out; },
     weekStart() { return this.content.weekStartsMonday ? 1 : 0; },
+    uc() { return this.content.utc !== false; },   // interpret/display all dates in UTC
     weekdayLabels() { const out = []; for (let i = 0; i < 7; i++) out.push(DOW_SUN[(this.weekStart + i) % 7]); return out; },
     eventsById() { const m = {}; this.normEvents.forEach((e) => { if (e.id !== "" && e.id != null) m[e.id] = e; }); return m; },
     normEvents() {
@@ -228,10 +229,10 @@ export default {
         let end = this.parseDate(this.unwrap(obj[ek]));
         const schedRaw = obj[sk];
         const scheduled = overridden ? true : (schedRaw === false || schedRaw === "false" ? false : !!date);
-        const hasTime = !!date && (date.getHours() !== 0 || date.getMinutes() !== 0);
+        const hasTime = !!date && (this.gH(date) !== 0 || this.gMi(date) !== 0);
         if (date && !end) end = new Date(date.getTime() + dur * 60000);
-        const startMin = date ? date.getHours() * 60 + date.getMinutes() : null;
-        const endMin = end ? end.getHours() * 60 + end.getMinutes() : null;
+        const startMin = date ? this.gH(date) * 60 + this.gMi(date) : null;
+        const endMin = end ? this.gH(end) * 60 + this.gMi(end) : null;
         return {
           _k: (idVal !== "" ? idVal : "i" + i) + "_" + i,
           id: idVal,
@@ -242,7 +243,7 @@ export default {
           scheduled, hasTime, startMin, endMin,
           timeText: hasTime ? this.timeStr(date) : "",
           spanText: hasTime ? `${this.timeStr(date)} - ${this.timeStr(end)}` : "",
-          dateText: date ? `${MON_SHORT[date.getMonth()]} ${date.getDate()}` : "",
+          dateText: date ? `${MON_SHORT[this.gMo(date)]} ${this.gD(date)}` : "",
           raw: obj,
         };
       });
@@ -256,18 +257,24 @@ export default {
     },
     rangeEvents() {
       const { start, end } = this.rangeBounds;
-      return this.scheduledEvents.filter((e) => e.date >= start && e.date <= end).sort((a, b) => a.date - b.date);
+      let lo = start;
+      // Events list floor: only yesterday and after (hide older items).
+      if (this.content.hidePastEvents !== false) {
+        const y = this.addDays(this.startOfDay(new Date()), -1);
+        if (y > lo) lo = y;
+      }
+      return this.scheduledEvents.filter((e) => e.date >= lo && e.date <= end).sort((a, b) => a.date - b.date);
     },
     monthCells() {
       const first = this.startOfMonth(this.cursor);
       const gridStart = this.startOfWeek(first);
       const cells = [];
       const today = this.startOfDay(new Date());
-      const month = this.cursor.getMonth();
+      const month = this.gMo(this.cursor);
       for (let i = 0; i < 42; i++) {
         const date = this.addDays(gridStart, i);
-        cells.push({ date, day: date.getDate(), inMonth: date.getMonth() === month, isToday: this.isSameDay(date, today), events: this.eventsOnDay(date) });
-        if (i >= 34 && date.getMonth() !== month && this.addDays(gridStart, i - 6).getMonth() !== month) break;
+        cells.push({ date, day: this.gD(date), inMonth: this.gMo(date) === month, isToday: this.isSameDay(date, today), events: this.eventsOnDay(date) });
+        if (i >= 34 && this.gMo(date) !== month && this.gMo(this.addDays(gridStart, i - 6)) !== month) break;
       }
       return cells;
     },
@@ -280,13 +287,13 @@ export default {
     gridDays() { return this.view === "day" ? [this.buildDay(this.cursor)] : this.weekDays; },
     rangeLabel() {
       const d = this.cursor;
-      if (this.view === "day") return `${DOW_SUN[d.getDay()]}, ${MON_SHORT[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+      if (this.view === "day") return `${DOW_SUN[this.gDay(d)]}, ${MON_SHORT[this.gMo(d)]} ${this.gD(d)}, ${this.gY(d)}`;
       if (this.view === "week") {
         const s = this.startOfWeek(d), e = this.addDays(s, 6);
-        if (s.getMonth() === e.getMonth()) return `${MON_SHORT[s.getMonth()]} ${s.getDate()} – ${e.getDate()}, ${e.getFullYear()}`;
-        return `${MON_SHORT[s.getMonth()]} ${s.getDate()} – ${MON_SHORT[e.getMonth()]} ${e.getDate()}, ${e.getFullYear()}`;
+        if (this.gMo(s) === this.gMo(e)) return `${MON_SHORT[this.gMo(s)]} ${this.gD(s)} – ${this.gD(e)}, ${this.gY(e)}`;
+        return `${MON_SHORT[this.gMo(s)]} ${this.gD(s)} – ${MON_SHORT[this.gMo(e)]} ${this.gD(e)}, ${this.gY(e)}`;
       }
-      return `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+      return `${MONTHS[this.gMo(d)]} ${this.gY(d)}`;
     },
     hourBgStyle() { return {}; },
     svgAttrs() {
@@ -315,15 +322,24 @@ export default {
       return v == null ? "" : String(v).trim();
     },
     parseDate(v) { if (!v) return null; if (v instanceof Date) return isNaN(v.getTime()) ? null : v; const d = new Date(v); return isNaN(d.getTime()) ? null : d; },
-    startOfDay(d) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; },
-    endOfDay(d) { const x = new Date(d); x.setHours(23, 59, 59, 999); return x; },
-    startOfMonth(d) { return new Date(d.getFullYear(), d.getMonth(), 1); },
-    endOfMonth(d) { return new Date(d.getFullYear(), d.getMonth() + 1, 0); },
-    addDays(d, n) { const x = new Date(d); x.setDate(x.getDate() + n); return this.startOfDay(x); },
-    addMonths(d, n) { return new Date(d.getFullYear(), d.getMonth() + n, Math.min(d.getDate(), 28)); },
-    startOfWeek(d) { const x = this.startOfDay(d); const diff = (x.getDay() - this.weekStart + 7) % 7; return this.addDays(x, -diff); },
-    isSameDay(a, b) { return a && b && a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate(); },
-    timeStr(d) { let h = d.getHours(); const m = d.getMinutes(); const ap = h >= 12 ? "PM" : "AM"; h = h % 12; if (h === 0) h = 12; return m === 0 ? `${h}:00 ${ap}` : `${h}:${String(m).padStart(2, "0")} ${ap}`; },
+    // Date-part accessors that honor the UTC flag, plus a UTC/local constructor.
+    gY(d) { return this.uc ? d.getUTCFullYear() : d.getFullYear(); },
+    gMo(d) { return this.uc ? d.getUTCMonth() : d.getMonth(); },
+    gD(d) { return this.uc ? d.getUTCDate() : d.getDate(); },
+    gDay(d) { return this.uc ? d.getUTCDay() : d.getDay(); },
+    gH(d) { return this.uc ? d.getUTCHours() : d.getHours(); },
+    gMi(d) { return this.uc ? d.getUTCMinutes() : d.getMinutes(); },
+    mk(y, mo, d, h, mi) { return this.uc ? new Date(Date.UTC(y, mo, d, h || 0, mi || 0, 0, 0)) : new Date(y, mo, d, h || 0, mi || 0, 0, 0); },
+    setTime(dateObj, mins) { const d = new Date(dateObj); const h = Math.floor(mins / 60), m = mins % 60; if (this.uc) d.setUTCHours(h, m, 0, 0); else d.setHours(h, m, 0, 0); return d; },
+    startOfDay(d) { return this.mk(this.gY(d), this.gMo(d), this.gD(d), 0, 0); },
+    endOfDay(d) { const x = new Date(this.startOfDay(d)); if (this.uc) x.setUTCHours(23, 59, 59, 999); else x.setHours(23, 59, 59, 999); return x; },
+    startOfMonth(d) { return this.mk(this.gY(d), this.gMo(d), 1, 0, 0); },
+    endOfMonth(d) { return this.mk(this.gY(d), this.gMo(d) + 1, 0, 0, 0); },
+    addDays(d, n) { const b = this.startOfDay(d); return this.mk(this.gY(b), this.gMo(b), this.gD(b) + n, 0, 0); },
+    addMonths(d, n) { return this.mk(this.gY(d), this.gMo(d) + n, Math.min(this.gD(d), 28), 0, 0); },
+    startOfWeek(d) { const x = this.startOfDay(d); const diff = (this.gDay(x) - this.weekStart + 7) % 7; return this.addDays(x, -diff); },
+    isSameDay(a, b) { return a && b && this.gY(a) === this.gY(b) && this.gMo(a) === this.gMo(b) && this.gD(a) === this.gD(b); },
+    timeStr(d) { let h = this.gH(d); const m = this.gMi(d); const ap = h >= 12 ? "PM" : "AM"; h = h % 12; if (h === 0) h = 12; return m === 0 ? `${h}:00 ${ap}` : `${h}:${String(m).padStart(2, "0")} ${ap}`; },
     hourLabel(h) { const ap = h >= 12 && h < 24 ? "pm" : "am"; let hh = h % 12; if (hh === 0) hh = 12; return hh + ap; },
     hourTop(h) { return (h - this.dayStartHour) * HOUR_H; },
     eventsOnDay(day) { return this.scheduledEvents.filter((e) => this.isSameDay(e.date, day)).sort((a, b) => a.date - b.date); },
@@ -332,7 +348,7 @@ export default {
       const evs = this.eventsOnDay(date);
       const allDay = evs.filter((e) => !e.hasTime);
       const timed = this.layoutDayEvents(evs.filter((e) => e.hasTime));
-      return { key: date.getFullYear() + "-" + (date.getMonth() + 1) + "-" + date.getDate(), date, dow: DOW_SUN[date.getDay()], mlabel: (date.getMonth() + 1) + "/" + date.getDate(), isToday: this.isSameDay(date, today), allDay, timed };
+      return { key: this.gY(date) + "-" + (this.gMo(date) + 1) + "-" + this.gD(date), date, dow: DOW_SUN[this.gDay(date)], mlabel: (this.gMo(date) + 1) + "/" + this.gD(date), isToday: this.isSameDay(date, today), allDay, timed };
     },
     // Pack overlapping events into side-by-side lanes; returns each with layout.
     layoutDayEvents(evs) {
@@ -397,7 +413,7 @@ export default {
     clickCol(e, date) {
       if (this.dragId) return;
       const mins = this.minutesFromPointer(e, e.currentTarget);
-      const nd = new Date(date); nd.setHours(Math.floor(mins / 60), mins % 60, 0, 0);
+      const nd = this.setTime(date, mins);
       this.$emit("trigger-event", { name: "dateClick", event: { date: this.toISO(nd) } });
     },
     clickEvent(ev) { this.$emit("trigger-event", { name: "eventClick", event: { id: ev.id, title: ev.title, date: this.toISO(ev.date), tag: ev.tag, pm: ev.pm, event: ev.raw } }); },
@@ -427,7 +443,7 @@ export default {
       e.preventDefault();
       if (this.dragId == null) return;
       const mins = this.minutesFromPointer(e, e.currentTarget);
-      const nd = new Date(date); nd.setHours(Math.floor(mins / 60), mins % 60, 0, 0);
+      const nd = this.setTime(date, mins);
       this.commitDrop(nd, false);
     },
     onAllDayDrop(e, date) { e.preventDefault(); if (this.dragId == null) return; this.commitDrop(this.startOfDay(date), true); },
@@ -435,9 +451,9 @@ export default {
       e.preventDefault();
       if (this.dragId == null) return;
       const src = this.eventsById[this.dragId];
-      const nd = this.startOfDay(date);
+      let nd = this.startOfDay(date);
       let allDay = true;
-      if (src && src.startMin != null && src.hasTime) { nd.setHours(Math.floor(src.startMin / 60), src.startMin % 60, 0, 0); allDay = false; }
+      if (src && src.startMin != null && src.hasTime) { nd = this.setTime(nd, src.startMin); allDay = false; }
       this.commitDrop(nd, allDay);
     },
     commitDrop(dateObj, allDay) {
