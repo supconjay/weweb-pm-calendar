@@ -7,6 +7,7 @@ export default {
     { name: "schedule", label: { en: "On drag-to-schedule (unscheduled → calendar)" }, event: { id: "", date: "", start: "", end: "", allDay: false, title: "", tag: "", event: {} } },
     { name: "eventDrop", label: { en: "On event dragged (reschedule)" }, event: { id: "", date: "", start: "", end: "", allDay: false, title: "", tag: "", event: {} } },
     { name: "eventResize", label: { en: "On event resized (drag bottom edge)" }, event: { id: "", date: "", start: "", end: "", allDay: false, title: "", tag: "", event: {} } },
+    { name: "pmFilterChange", label: { en: "On PM filter change" }, event: { pm: "" } },
     { name: "viewChange", label: { en: "On view change" }, event: { view: "month" } },
     { name: "navigate", label: { en: "On navigate (range change)" }, event: { view: "month", date: "", rangeStart: "", rangeEnd: "" } },
   ],
@@ -50,6 +51,14 @@ export default {
     },
     showViewSwitch: { label: { en: "Show view switcher" }, type: "OnOff", defaultValue: true, bindable: true },
     showPmName: { label: { en: "Show PM name on events" }, type: "OnOff", defaultValue: true, bindable: true },
+
+    // ---- PM filter ----
+    // Built-in dropdown auto-populated from the PM field. Also bindable: bind
+    // `filterPm` to a page variable (or drive it from a filter bar) to control
+    // it externally — the dropdown and the bound value stay in sync.
+    showPmFilter: { label: { en: "Show PM filter dropdown" }, type: "OnOff", defaultValue: true, bindable: true },
+    filterPm: { label: { en: "PM filter value (bind)" }, type: "Text", defaultValue: "", bindable: true },
+    pmFilterAllText: { label: { en: "PM filter: 'all' option label" }, type: "Text", defaultValue: "All PMs", bindable: true },
     weekStartsMonday: { label: { en: "Week starts Monday" }, type: "OnOff", defaultValue: false, bindable: true },
     utc: { label: { en: "Interpret & display times as UTC" }, type: "OnOff", defaultValue: true, bindable: true },
     maxPerDay: { label: { en: "Max events per day cell (month)" }, type: "Number", options: { min: 1, max: 10, step: 1 }, defaultValue: 3, bindable: true },

@@ -12,8 +12,18 @@
           </div>
           <span class="pp-cal__range">{{ rangeLabel }}</span>
         </div>
-        <div v-if="content.showViewSwitch !== false" class="pp-viewswitch">
-          <button v-for="v in ['month','week','day']" :key="v" type="button" class="pp-viewswitch__btn" :class="{ 'pp-viewswitch__btn--active': view === v }" @click="setView(v)">{{ cap(v) }}</button>
+        <div class="pp-cal__barright">
+          <label v-if="content.showPmFilter !== false && pmOptions.length" class="pp-pmfilter">
+            <svg class="pp-svg pp-pmfilter__icon" v-bind="svgAttrs"><path :d="ic('user')"></path></svg>
+            <select class="pp-pmfilter__select" :value="pmSel" @change="onPmChange($event)">
+              <option value="">{{ content.pmFilterAllText || 'All PMs' }}</option>
+              <option v-for="p in pmOptions" :key="p" :value="p">{{ p }}</option>
+            </select>
+            <svg class="pp-svg pp-pmfilter__caret" v-bind="svgAttrs"><path :d="ic('chevron-down')"></path></svg>
+          </label>
+          <div v-if="content.showViewSwitch !== false" class="pp-viewswitch">
+            <button v-for="v in ['month','week','day']" :key="v" type="button" class="pp-viewswitch__btn" :class="{ 'pp-viewswitch__btn--active': view === v }" @click="setView(v)">{{ cap(v) }}</button>
+          </div>
         </div>
       </div>
 
@@ -169,6 +179,7 @@
 const ICONS = {
   "chevron-left": "M15 18l-6-6 6-6",
   "chevron-right": "M9 18l6-6-6-6",
+  "chevron-down": "M6 9l6 6 6-6",
   alert: "M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01",
   "calendar-plus": "M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM12 14v4M10 16h4",
   grip: "M9 6h.01M9 12h.01M9 18h.01M15 6h.01M15 12h.01M15 18h.01",
@@ -198,6 +209,7 @@ export default {
       resizeId: null,     // id of the event being resized
       resizeStartMin: 0,
       resizeColEl: null,
+      pmSel: this.namesOf(this.content && this.content.filterPm),   // active PM filter (built-in dropdown or bound)
     };
   },
   created() {
@@ -212,6 +224,7 @@ export default {
   watch: {
     "content.defaultView"(v) { if (v) this.view = v; },
     "content.events"() { this.overrides = {}; },   // fresh server data wins
+    "content.filterPm"(v) { this.pmSel = this.namesOf(v); },   // external/bound filter wins
   },
   computed: {
     dragEnabled() { return this.content.enableDragDrop !== false; },
@@ -258,6 +271,7 @@ export default {
           title: String(this.unwrap(obj[tk]) || "Untitled"),
           date, end, tag: String(this.unwrap(obj[gk]) || ""),
           pm: this.namesOf(obj[pmk]),
+          pmList: this.nameList(obj[pmk]),
           color: this.unwrap(obj[ck]) || "",
           scheduled, hasTime, startMin, endMin,
           timeText: hasTime ? this.timeStr(date) : "",
@@ -267,8 +281,20 @@ export default {
         };
       });
     },
-    scheduledEvents() { return this.normEvents.filter((e) => e.scheduled && e.date); },
-    unscheduled() { return this.normEvents.filter((e) => !e.scheduled || !e.date); },
+    // Unique PM names across all events, for the built-in filter dropdown.
+    pmOptions() {
+      const seen = new Map();
+      this.normEvents.forEach((e) => e.pmList.forEach((n) => { const k = n.toLowerCase(); if (n && !seen.has(k)) seen.set(k, n); }));
+      return Array.from(seen.values()).sort((a, b) => a.localeCompare(b));
+    },
+    // Events after the PM filter (empty selection = show all).
+    filteredEvents() {
+      const sel = String(this.pmSel || "").trim().toLowerCase();
+      if (!sel) return this.normEvents;
+      return this.normEvents.filter((e) => e.pmList.some((n) => n.toLowerCase() === sel));
+    },
+    scheduledEvents() { return this.filteredEvents.filter((e) => e.scheduled && e.date); },
+    unscheduled() { return this.filteredEvents.filter((e) => !e.scheduled || !e.date); },
     rangeBounds() {
       if (this.view === "day") return { start: this.startOfDay(this.cursor), end: this.endOfDay(this.cursor) };
       if (this.view === "week") { const s = this.startOfWeek(this.cursor); return { start: s, end: this.endOfDay(this.addDays(s, 6)) }; }
@@ -339,6 +365,15 @@ export default {
     namesOf(v) {
       if (Array.isArray(v)) return v.filter((x) => x != null && x !== "").map((x) => String(x).trim()).join(", ");
       return v == null ? "" : String(v).trim();
+    },
+    // Split a PM/assignee value (array OR "A, B" string) into individual names.
+    nameList(v) {
+      if (Array.isArray(v)) return v.filter((x) => x != null && x !== "").map((x) => String(x).trim()).filter(Boolean);
+      return String(v == null ? "" : v).split(/[,;]/).map((s) => s.trim()).filter(Boolean);
+    },
+    onPmChange(e) {
+      this.pmSel = e && e.target ? e.target.value : "";
+      this.$emit("trigger-event", { name: "pmFilterChange", event: { pm: this.pmSel } });
     },
     parseDate(v) { if (!v) return null; if (v instanceof Date) return isNaN(v.getTime()) ? null : v; const d = new Date(v); return isNaN(d.getTime()) ? null : d; },
     // Date-part accessors that honor the UTC flag, plus a UTC/local constructor.
@@ -569,6 +604,14 @@ export default {
 .pp-iconbtn { display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-muted); cursor: pointer; transition: background .15s, color .15s; }
 .pp-iconbtn:hover:not(:disabled) { background: var(--surface-2); color: var(--text); }
 .pp-iconbtn .pp-svg { width: 16px; height: 16px; }
+
+.pp-cal__barright { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pp-pmfilter { position: relative; display: inline-flex; align-items: center; }
+.pp-pmfilter__icon { position: absolute; left: 10px; width: 15px; height: 15px; color: var(--text-muted); pointer-events: none; }
+.pp-pmfilter__caret { position: absolute; right: 8px; width: 15px; height: 15px; color: var(--text-muted); pointer-events: none; }
+.pp-pmfilter__select { appearance: none; -webkit-appearance: none; -moz-appearance: none; height: 34px; padding: 0 30px 0 32px; border-radius: 9px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); font-family: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; max-width: 200px; transition: border-color .15s, background .15s; }
+.pp-pmfilter__select:hover { background: var(--surface-2); }
+.pp-pmfilter__select:focus { outline: none; border-color: var(--primary); }
 
 .pp-viewswitch { display: inline-flex; gap: 3px; padding: 4px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 11px; }
 .pp-viewswitch__btn { border: none; background: transparent; color: var(--text-muted); padding: 7px 15px; border-radius: 8px; font-size: 12.5px; font-weight: 600; cursor: pointer; font-family: inherit; transition: background .15s, color .15s; }
