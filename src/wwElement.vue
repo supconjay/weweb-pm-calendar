@@ -152,6 +152,7 @@
               >
                 <div class="pp-actionitem">
                   <div class="pp-actionitem__title">{{ ev.title }}</div>
+                  <div v-if="content.showPmName !== false && ev.pm" class="pp-actionitem__pm"><svg class="pp-svg" v-bind="svgAttrs"><path :d="ic('user')"></path></svg>{{ ev.pm }}</div>
                   <div class="pp-actionitem__foot">
                     <span v-if="ev.tag" class="pp-tag" :style="tagStyle(ev)">{{ ev.tag }}</span>
                     <span class="pp-actionitem__spacer"></span>
@@ -714,6 +715,8 @@ export default {
 .pp-actionli:hover .pp-actionitem { background: var(--surface-2); border-color: var(--border); }
 .pp-actionitem:active { cursor: grabbing; }
 .pp-actionitem__title { font-size: 13px; font-weight: 600; color: var(--text); overflow-wrap: anywhere; }
+.pp-actionitem__pm { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 600; color: var(--text-subtle); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pp-actionitem__pm .pp-svg { width: 12px; height: 12px; flex: none; }
 .pp-actionitem__foot { display: flex; align-items: center; gap: 8px; }
 .pp-actionitem__spacer { flex: 1; }
 .pp-actionitem__hint { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-subtle); }
