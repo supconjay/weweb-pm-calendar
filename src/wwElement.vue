@@ -464,9 +464,16 @@ export default {
       const id = this.dragId, kind = this.dragKind;
       if (id == null || id === "") { this.onDragEnd(); return; }
       const src = this.eventsById[id] || {};
+      // Keep the moved event's own length; otherwise use the default (60 min).
+      let durMin = this.defaultDurMin;
+      if (kind === "event" && src.startMin != null && src.endMin != null && src.endMin > src.startMin) durMin = src.endMin - src.startMin;
+      const endObj = new Date(dateObj.getTime() + durMin * 60000);
       this.overrides = Object.assign({}, this.overrides, { [id]: dateObj.toISOString() });
       const name = kind === "unscheduled" ? "schedule" : "eventDrop";
-      this.$emit("trigger-event", { name, event: { id, date: dateObj.toISOString(), allDay: !!allDay, title: src.title || "", tag: src.tag || "", event: src.raw || null } });
+      this.$emit("trigger-event", {
+        name,
+        event: { id, date: dateObj.toISOString(), start: dateObj.toISOString(), end: endObj.toISOString(), allDay: !!allDay, title: src.title || "", tag: src.tag || "", event: src.raw || null },
+      });
       this.onDragEnd();
     },
   },
