@@ -55,6 +55,8 @@
 
           <!-- WEEK / DAY time grid -->
           <div v-else class="pp-tg" :class="{ 'pp-tg--day': view === 'day' }">
+            <div class="pp-tg__scroll">
+            <div class="pp-tg__top">
             <div class="pp-tg__head">
               <div class="pp-tg__corner"></div>
               <div v-for="col in gridDays" :key="col.key" class="pp-tg__dayhead" :class="{ 'pp-tg__dayhead--today': col.isToday }">
@@ -77,6 +79,7 @@
                 </button>
               </div>
             </div>
+            </div>
             <div class="pp-tg__body">
               <div class="pp-tg__gutter" :style="{ height: gridHeight + 'px' }">
                 <span v-for="h in hourMarks" :key="h" class="pp-tg__hlabel" :style="{ top: hourTop(h) + 'px' }">{{ hourLabel(h) }}</span>
@@ -98,6 +101,7 @@
                   </div>
                 </div>
               </div>
+            </div>
             </div>
           </div>
         </div>
@@ -540,6 +544,10 @@ export default {
 
 /* time grid (week / day) */
 .pp-tg { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+/* Single scroll container so the header, all-day row and time grid share the
+   exact same width + scrollbar (otherwise the header drifts to the right). */
+.pp-tg__scroll { max-height: 640px; overflow-y: auto; }
+.pp-tg__top { position: sticky; top: 0; z-index: 5; background: var(--surface); }
 .pp-tg__head, .pp-tg__allday { display: grid; grid-template-columns: 56px repeat(var(--cols, 7), minmax(0, 1fr)); }
 .pp-tg--day .pp-tg__head, .pp-tg--day .pp-tg__allday { grid-template-columns: 56px minmax(0, 1fr); }
 .pp-tg__corner, .pp-tg__alllabel { border-right: 1px solid var(--border); }
@@ -551,7 +559,7 @@ export default {
 .pp-tg__allday { border-top: 1px solid var(--border); min-height: 36px; }
 .pp-tg__alldaycell { border-left: 1px solid var(--border); padding: 4px; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 
-.pp-tg__body { display: flex; max-height: 620px; overflow-y: auto; }
+.pp-tg__body { display: flex; }
 .pp-tg__gutter { position: relative; width: 56px; flex: none; border-right: 1px solid var(--border); border-top: 1px solid var(--border); }
 .pp-tg__hlabel { position: absolute; right: 6px; transform: translateY(-6px); font-size: 10.5px; font-weight: 600; color: var(--text-subtle); }
 .pp-tg__cols { flex: 1; display: grid; grid-template-columns: repeat(var(--cols, 7), minmax(0, 1fr)); border-top: 1px solid var(--border); }
