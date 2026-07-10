@@ -98,6 +98,7 @@
                     <span class="pp-tgevent__time">{{ ev.spanText }}</span>
                     <span class="pp-tgevent__title">{{ ev.title }}</span>
                     <span v-if="content.showPmName !== false && ev.pm" class="pp-tgevent__pm"><svg class="pp-svg" v-bind="svgAttrs"><path :d="ic('user')"></path></svg>{{ ev.pm }}</span>
+                    <div v-if="dragEnabled" class="pp-tgevent__resize" title="Drag to resize" @mousedown.stop.prevent="startResize($event, ev)"></div>
                   </div>
                 </div>
               </div>
@@ -189,11 +190,24 @@ export default {
     return {
       view: this.content.defaultView || "month",
       cursor: this.startOfDay(new Date()),
-      overrides: {},      // id -> ISO date (optimistic drag result)
+      overrides: {},      // id -> { start, end } ISO (optimistic drag/resize result)
       dragId: null,
       dragKind: null,     // 'event' | 'unscheduled'
       dragOverKey: null,
+      dragGrabY: 0,       // px offset of the cursor from the grabbed event's top
+      resizeId: null,     // id of the event being resized
+      resizeStartMin: 0,
+      resizeColEl: null,
     };
+  },
+  created() {
+    this._rm = this.onResizeMove.bind(this);
+    this._ru = this.onResizeUp.bind(this);
+    this._suppressDrag = false;
+    this._resized = false;
+  },
+  beforeUnmount() {
+    if (typeof document !== "undefined") { document.removeEventListener("mousemove", this._rm); document.removeEventListener("mouseup", this._ru); }
   },
   watch: {
     "content.defaultView"(v) { if (v) this.view = v; },
@@ -228,9 +242,10 @@ export default {
         const obj = o && typeof o === "object" ? o : { [tk]: o };
         const idVal = obj[idk] != null ? obj[idk] : "";
         let date = this.parseDate(this.unwrap(obj[dk]));
-        let overridden = false;
-        if (idVal !== "" && this.overrides[idVal] != null) { date = this.parseDate(this.overrides[idVal]); overridden = true; }
         let end = this.parseDate(this.unwrap(obj[ek]));
+        let overridden = false;
+        const ov = idVal !== "" ? this.overrides[idVal] : null;
+        if (ov) { date = this.parseDate(ov.start); end = this.parseDate(ov.end); overridden = true; }
         const schedRaw = obj[sk];
         const scheduled = overridden ? true : (schedRaw === false || schedRaw === "false" ? false : !!date);
         const hasTime = !!date && (this.gH(date) !== 0 || this.gMi(date) !== 0);
@@ -424,24 +439,62 @@ export default {
     clickSchedule(ev) { this.$emit("trigger-event", { name: "scheduleClick", event: { id: ev.id, title: ev.title, tag: ev.tag, event: ev.raw } }); },
     // ---- drag & drop ----
     onEventDragStart(e, ev) {
-      if (!this.dragEnabled) return;
+      if (!this.dragEnabled || this._suppressDrag) { e.preventDefault(); return; }
       this.dragId = ev.id; this.dragKind = "event";
+      // Remember how far down the block the cursor grabbed it, so the drop can
+      // land the event's TOP at the pointer instead of the grab point.
+      try { const r = e.currentTarget.getBoundingClientRect(); this.dragGrabY = e.clientY - r.top; } catch (err) { this.dragGrabY = 0; }
       try { e.dataTransfer.setData("text/plain", String(ev.id)); e.dataTransfer.effectAllowed = "move"; } catch (err) {}
     },
     onUnschedDragStart(e, ev) {
       if (!this.dragEnabled) return;
-      this.dragId = ev.id; this.dragKind = "unscheduled";
+      this.dragId = ev.id; this.dragKind = "unscheduled"; this.dragGrabY = 0;
       try { e.dataTransfer.setData("text/plain", String(ev.id)); e.dataTransfer.effectAllowed = "move"; } catch (err) {}
     },
     onDragOver(e, key) { if (this.dragId == null) return; e.preventDefault(); this.dragOverKey = key; if (e.dataTransfer) e.dataTransfer.dropEffect = "move"; },
     onDragLeave() { this.dragOverKey = null; },
-    onDragEnd() { this.dragId = null; this.dragKind = null; this.dragOverKey = null; },
+    onDragEnd() { this.dragId = null; this.dragKind = null; this.dragOverKey = null; this.dragGrabY = 0; },
     minutesFromPointer(e, colEl) {
       const rect = colEl.getBoundingClientRect();
-      let mins = ((e.clientY - rect.top) / HOUR_H) * 60 + this.dayStartHour * 60;
+      const y = e.clientY - rect.top - (this.dragGrabY || 0);
+      let mins = (y / HOUR_H) * 60 + this.dayStartHour * 60;
       mins = Math.round(mins / SNAP_MIN) * SNAP_MIN;
       const min = this.dayStartHour * 60, max = this.dayEndHour * 60 - SNAP_MIN;
       return Math.max(min, Math.min(max, mins));
+    },
+    // ---- resize (drag the bottom edge to change the end time) ----
+    startResize(e, ev) {
+      if (!this.dragEnabled) return;
+      this._suppressDrag = true; this._resized = false;
+      this.resizeId = ev.id;
+      this.resizeStartMin = ev.startMin != null ? ev.startMin : this.dayStartHour * 60;
+      this.resizeColEl = e.currentTarget.closest(".pp-tg__col");
+      document.addEventListener("mousemove", this._rm);
+      document.addEventListener("mouseup", this._ru);
+    },
+    onResizeMove(e) {
+      if (this.resizeId == null || !this.resizeColEl) return;
+      const src = this.eventsById[this.resizeId];
+      if (!src || !src.date) return;
+      const rect = this.resizeColEl.getBoundingClientRect();
+      let mins = ((e.clientY - rect.top) / HOUR_H) * 60 + this.dayStartHour * 60;
+      mins = Math.round(mins / 15) * 15;
+      mins = Math.max(this.resizeStartMin + 15, Math.min(this.dayEndHour * 60, mins));
+      this._resized = true;
+      const endD = this.setTime(src.date, mins);
+      this.overrides = Object.assign({}, this.overrides, { [this.resizeId]: { start: src.date.toISOString(), end: endD.toISOString() } });
+    },
+    onResizeUp() {
+      document.removeEventListener("mousemove", this._rm);
+      document.removeEventListener("mouseup", this._ru);
+      const id = this.resizeId;
+      this.resizeId = null; this.resizeColEl = null;
+      // Let a subsequent click be suppressed for this tick, then re-enable drag.
+      setTimeout(() => { this._suppressDrag = false; }, 0);
+      if (id == null || !this._resized) return;
+      const src = this.eventsById[id] || {};
+      const ov = this.overrides[id] || {};
+      this.$emit("trigger-event", { name: "eventResize", event: { id, date: ov.start || "", start: ov.start || "", end: ov.end || "", allDay: false, title: src.title || "", tag: src.tag || "", event: src.raw || null } });
     },
     onColDrop(e, date) {
       e.preventDefault();
@@ -468,7 +521,7 @@ export default {
       let durMin = this.defaultDurMin;
       if (kind === "event" && src.startMin != null && src.endMin != null && src.endMin > src.startMin) durMin = src.endMin - src.startMin;
       const endObj = new Date(dateObj.getTime() + durMin * 60000);
-      this.overrides = Object.assign({}, this.overrides, { [id]: dateObj.toISOString() });
+      this.overrides = Object.assign({}, this.overrides, { [id]: { start: dateObj.toISOString(), end: endObj.toISOString() } });
       const name = kind === "unscheduled" ? "schedule" : "eventDrop";
       this.$emit("trigger-event", {
         name,
@@ -580,6 +633,9 @@ export default {
 .pp-tgevent__title { font-size: 11.5px; font-weight: 700; line-height: 1.25; overflow: hidden; }
 .pp-tgevent__pm { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; font-weight: 600; opacity: .9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
 .pp-tgevent__pm .pp-svg { width: 10px; height: 10px; flex: none; }
+.pp-tgevent__resize { position: absolute; left: 0; right: 0; bottom: 0; height: 9px; cursor: ns-resize; }
+.pp-tgevent__resize::after { content: ""; display: block; width: 26px; height: 3px; margin: 3px auto 0; border-radius: 2px; background: rgba(255, 255, 255, .55); opacity: 0; transition: opacity .12s; }
+.pp-tgevent:hover .pp-tgevent__resize::after { opacity: 1; }
 
 /* week grid set cols var */
 .pp-tg { --cols: 7; }

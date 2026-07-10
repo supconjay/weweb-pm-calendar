@@ -6,6 +6,7 @@ export default {
     { name: "dateClick", label: { en: "On day/slot click" }, event: { date: "" } },
     { name: "schedule", label: { en: "On drag-to-schedule (unscheduled → calendar)" }, event: { id: "", date: "", start: "", end: "", allDay: false, title: "", tag: "", event: {} } },
     { name: "eventDrop", label: { en: "On event dragged (reschedule)" }, event: { id: "", date: "", start: "", end: "", allDay: false, title: "", tag: "", event: {} } },
+    { name: "eventResize", label: { en: "On event resized (drag bottom edge)" }, event: { id: "", date: "", start: "", end: "", allDay: false, title: "", tag: "", event: {} } },
     { name: "viewChange", label: { en: "On view change" }, event: { view: "month" } },
     { name: "navigate", label: { en: "On navigate (range change)" }, event: { view: "month", date: "", rangeStart: "", rangeEnd: "" } },
   ],
